@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -96,4 +97,42 @@ class ProductController extends Controller
         ]);
 
     }
+
+    public function graph()
+    {
+        $usersByWeek = DB::table('products')
+            ->select(DB::raw('YEARWEEK(created_at) as year_week'), DB::raw('count(*) as count'))
+            ->groupBy('year_week')
+            ->orderBy('year_week', 'asc')
+            ->get();
+
+        $labels = $usersByWeek->pluck('year_week')->map(function ($yearWeek) {
+            $year = substr($yearWeek, 0, 4);
+            $week = substr($yearWeek, 4);
+            $date = Carbon::now()->setISODate($year, $week);
+            return $date->format('M d, Y');
+        });
+
+        $data = $usersByWeek->pluck('count');
+
+        $chartData = [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'Users added each week',
+                    'backgroundColor' => 'rgba(255, 99, 132, 0.2)',
+                    'borderColor' => 'rgba(255, 99, 132, 1)',
+                    'borderWidth' => 1,
+                    'hoverBackgroundColor' => 'rgba(255, 99, 132, 0.4)',
+                    'hoverBorderColor' => 'rgba(255, 99, 132, 1)',
+                    'data' => $data,
+                ]
+            ]
+        ];
+
+        return response()->json($chartData);
+    }
+
+
+    
 }
